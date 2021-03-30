@@ -304,6 +304,8 @@ def CTABolider(_bot):
 
             if reaction.emoji == closeCTAReactionName and HaveRole(user.roles):
                 cta.status = Status.DONE
+                message = await bot.get_guild(cta.guildID).get_channel(cta.channelID).fetch_message(cta.messageID)
+                await message.edit(embed=cta.GetEmbed())
             else:
                 if reaction.emoji not in [set.emoji for set in sets]:
                     return
