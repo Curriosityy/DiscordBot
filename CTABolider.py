@@ -218,7 +218,6 @@ def CTABolider(_bot):
         pickle.dump(sets, a_file)
         a_file.close()
         print("SAVED")
-        await asyncio.sleep(600)
 
     def load():
         with open("sets.pkl", "rb") as a_file:
