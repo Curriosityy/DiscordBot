@@ -213,13 +213,12 @@ def CTABolider(_bot):
 
             await asyncio.sleep(3)
     
-    async def saveTask():
-        await bot.wait_until_ready()
+    def save():
         a_file = open("sets.pkl", "wb")
         pickle.dump(sets, a_file)
         a_file.close()
         print("SAVED")
-        await asyncio.sleep(60)
+        await asyncio.sleep(600)
 
     def load():
         with open("sets.pkl", "rb") as a_file:
@@ -233,7 +232,6 @@ def CTABolider(_bot):
     
     load()
     bot.loop.create_task(my_background_task())
-    bot.loop.create_task(saveTask())
 
     @bot.command(name='createCTA', help='!!createCTA <Młotki> <Timer>')
     @commands.has_any_role(573968475551432705, 706268409830309990, 566961993471361042, 591402939063730184)
@@ -270,6 +268,8 @@ def CTABolider(_bot):
             await ctx.send(f"Set added {setName}")
         else:
             await ctx.send(f"Set exist {setName}")
+        
+        save()
 
     @bot.command(name='RemoveSet')
     @commands.has_any_role(573968475551432705, 706268409830309990, 566961993471361042, 591402939063730184)
@@ -281,6 +281,8 @@ def CTABolider(_bot):
             await ctx.send(f"Set removed {setName}")
         else:
             await ctx.send(f"Set not exist {setName}")
+        
+        save()
 
     @bot.command(name='GenerateAttendance')
     @commands.has_any_role(573968475551432705, 706268409830309990, 566961993471361042, 591402939063730184)
