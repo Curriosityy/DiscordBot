@@ -17,6 +17,7 @@ from discord.ext import commands
 nl = '\n'
 plToBool = {"tak": True, "nie": False}
 boolToPL = {True: "Tak", False: "Nie"}
+VERSION = "0.3"
 
 class SetType(Enum):
     NOTYPE = 0
@@ -174,7 +175,7 @@ class CTA:
             name="Melee", value=f"LICZBA : {sum(1 for player in self.players.values() if player.pickedSet.type is SetType.MDPS)}", inline=True)
         embed.add_field(
             name="Sety", value=f"{PrintSets(GetSetsByType(self.sets,SetType.MDPS), self.players.values())}", inline=True)
-        embed.set_footer(text="Developer MSc Curriosityy #8105")
+        embed.set_footer(text="Developer MSc Curriosityy #8105        Ver: {VERSION}")
         return embed
 
     def GetPlayersMention(self):
