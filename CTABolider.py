@@ -175,7 +175,7 @@ class CTA:
             name="Melee", value=f"LICZBA : {sum(1 for player in self.players.values() if player.pickedSet.type is SetType.MDPS)}", inline=True)
         embed.add_field(
             name="Sety", value=f"{PrintSets(GetSetsByType(self.sets,SetType.MDPS), self.players.values())}", inline=True)
-        embed.set_footer(text="Developer MSc Curriosityy #8105        Ver: {VERSION}")
+        embed.set_footer(text=f"Developer MSc Curriosityy #8105        Ver: {VERSION}")
         return embed
 
     def GetPlayersMention(self):
