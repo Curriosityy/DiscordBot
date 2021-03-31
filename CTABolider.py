@@ -4,6 +4,7 @@ import math
 import ast
 import asyncio
 import pickle
+import atexit
 
 from datetime import datetime
 from datetime import time
@@ -99,7 +100,13 @@ def PrintSets(sets: [Set], players:[Player]):
 
     for set in sets:
         set2: Set = set
-        value += f"{nl}{set2.name} {set2.emoji} {sum(1 for player in players if player.pickedSet.name is set2.name)}"
+        suma = 0
+
+        for player in players:
+            if player.pickedSet.name == set2.name:
+                suma+=1
+
+        value += f"{nl}{set2.name} {set2.emoji} {suma}"
 
     return value
 
@@ -189,6 +196,9 @@ def CTABolider(_bot):
                 566961993471361042, 591402939063730184]
     closeCTAReactionName = "🔴"
 
+    ReactionAddQueue = []
+    ReactionRemovedQueue = []
+
     @bot.event
     async def on_message(message):
 
@@ -201,12 +211,7 @@ def CTABolider(_bot):
                 cta: CTA
 
                 if cta.status != Status.DONE:
-
-                    if cta.messageID not in fetchedMessages:
-                        print("Fetching message")
-                        message = await bot.get_guild(cta.guildID).get_channel(cta.channelID).fetch_message(cta.messageID)
-                    else:
-                        message = fetchedMessages[cta.messageID]
+                    message = await GetMessage(cta.guildID,cta.channelID,cta.messageID)
 
                     if cta.status == Status.MASSING:
                         currentTime = datetime.now().time()
@@ -218,21 +223,56 @@ def CTABolider(_bot):
 
             await asyncio.sleep(3)
     
-    def save():
-        a_file = open("sets.pkl", "wb")
-        pickle.dump(sets, a_file)
+    async def GetMessage(guildID, channelID, messageID):
+        if messageID not in fetchedMessages:
+            print("Fetching message")
+            message = await bot.get_guild(guildID).get_channel(channelID).fetch_message(messageID)
+            fetchedMessages[messageID] = message
+        else:
+            message = fetchedMessages[messageID]
+
+        return message
+        
+
+
+    @bot.command(name='SaveCTAS', help='!!SaveCTAS')
+    @commands.has_any_role(573968475551432705, 706268409830309990, 566961993471361042, 591402939063730184)
+    async def saveCTAS(ctx): 
+        a = ctas.items()
+        save(dict(filter(lambda cta: cta[1].status!=Status.DONE, ctas.items())), "CTAS")
+
+    def save(objecToSave, fileName:str):
+        a_file = open(f"{fileName}.pkl", "wb")
+        pickle.dump(objecToSave, a_file)
         a_file.close()
         print("SAVED")
 
     def load():
-        with open("sets.pkl", "rb") as a_file:
+        try:
+            a_file = open("sets.pkl", 'rb')
             loaded = pickle.load(a_file)
             a_file.close()
-
             for set in loaded:
                 sets.append(set)
-
             print(f"LOADED {sets}")
+        except OSError:
+            print("Could not open/read file: sets.pkl")
+        
+ 
+        try:
+            a_file = open("CTAS.pkl", 'rb')
+            loaded = pickle.load(a_file)
+            a_file.close()
+            for cta in loaded.items():
+                ctas[cta[0]] = cta[1]
+            print(f"LOADED {ctas}")
+        except OSError:
+            print("Could not open/read file: CTAS.pkl")
+            a_file.close()
+
+
+
+            
     
     load()
     bot.loop.create_task(my_background_task())
@@ -273,7 +313,7 @@ def CTABolider(_bot):
         else:
             await ctx.send(f"Set exist {setName}")
         
-        save()
+        save(sets,"sets")
 
     @bot.command(name='RemoveSet')
     @commands.has_any_role(573968475551432705, 706268409830309990, 566961993471361042, 591402939063730184)
@@ -286,7 +326,7 @@ def CTABolider(_bot):
         else:
             await ctx.send(f"Set not exist {setName}")
         
-        save()
+        save(sets,"sets")
 
     @bot.command(name='GenerateAttendance')
     @commands.has_any_role(573968475551432705, 706268409830309990, 566961993471361042, 591402939063730184)
@@ -297,37 +337,40 @@ def CTABolider(_bot):
             await user.send(message)
 
     @bot.event
-    async def on_reaction_add(reaction, user):
-        if user.bot:
-            return
-
-        if reaction.message.id in ctas:
-            cta: CTA = ctas[reaction.message.id]
-
-            if cta.status is cta.status.DONE:
-                return
-
-            if reaction.emoji == closeCTAReactionName and HaveRole(user.roles):
-                cta.status = Status.DONE
-                message = await bot.get_guild(cta.guildID).get_channel(cta.channelID).fetch_message(cta.messageID)
-                await message.edit(embed=cta.GetEmbed())
-            else:
-                if reaction.emoji not in [set.emoji for set in sets]:
-                    return
-                if user.id in cta.players:
-                    await UserClickedDiferentEmote(reaction, cta.players[user.id], cta, user)
-                else:
-                    filters =  list(filter(lambda x: x.emoji == reaction.emoji, sets))
-                    cta.AddPlayers(
-                        Player(user.name, filters[0], user.id, reaction.emoji))
-
-    @bot.event
     async def on_raw_reaction_remove(payload):
         if payload.message_id in ctas:
             cta: CTA = ctas[payload.message_id]
             if cta.status is not Status.DONE:
                 if payload.user_id in cta.players:
-                    cta.RemovePlayer(cta.players[payload.user_id])
+                    if cta.players[payload.user_id].emoji == payload.emoji.name:
+                        cta.RemovePlayer(cta.players[payload.user_id])
+
+    @bot.event
+    async def on_raw_reaction_add(payload):
+        guild = bot.get_guild(payload.guild_id)
+        user = await guild.fetch_member(payload.user_id)
+        if user.bot:
+            return
+        
+        if payload.message_id in ctas:
+            cta: CTA = ctas[payload.message_id]
+
+            if cta.status is cta.status.DONE:
+                return
+
+            if payload.emoji.name == closeCTAReactionName and HaveRole(user.roles):
+                cta.status = Status.DONE
+                message = await bot.get_guild(cta.guildID).get_channel(cta.channelID).fetch_message(cta.messageID)
+                await message.edit(embed=cta.GetEmbed())
+            else:
+                if payload.emoji.name not in [set.emoji for set in sets]:
+                    return
+                if user.id in cta.players and cta.players[user.id].emoji != payload.emoji.name:
+                    await UserClickedDiferentEmote(payload, cta.players[user.id], cta, user)
+                else:
+                    filters =  list(filter(lambda x: x.emoji == payload.emoji.name, sets))
+                    cta.AddPlayers(
+                        Player(user.name, filters[0], user.id, payload.emoji.name))
 
     def HaveRole(roles: []):
         value = False
@@ -343,14 +386,14 @@ def CTABolider(_bot):
 
         return value
 
-    async def UserClickedDiferentEmote(reaction: discord.Reaction, user: Player, cta: CTA, member: discord.User):
+    async def UserClickedDiferentEmote(payload, user: Player, cta: CTA, member: discord.User):
         prevoiosEmoji = user.emoji
-        user.emoji = reaction.emoji
-        filters =  list(filter(lambda x: x.emoji == reaction.emoji, sets))
+        user.emoji = payload.emoji.name
+        filters =  list(filter(lambda x: x.emoji == payload.emoji.name, sets))
         user.pickedSet = filters[0]
-        user.removedByBot = True
 
-        await reaction.message.remove_reaction(prevoiosEmoji, member)
+        message = await GetMessage(payload.guild_id,payload.channel_id,payload.message_id)
+        await message.remove_reaction(prevoiosEmoji,member)
 
     def HasSet(setName: str):
         hasSet = False
@@ -361,3 +404,6 @@ def CTABolider(_bot):
                 break
 
         return hasSet
+
+    atexit.register(save,ctas,"CTAS")
+    atexit.register(save,sets,"sets")
