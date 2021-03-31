@@ -268,12 +268,7 @@ def CTABolider(_bot):
                 ctas[cta[0]] = cta[1]
             print(f"LOADED {ctas}")
         except OSError:
-            print("Could not open/read file: CTAS.pkl")
-            a_file.close()
-
-
-
-            
+            print("Could not open/read file: CTAS.pkl")            
     
     load()
     bot.loop.create_task(my_background_task())
