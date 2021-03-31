@@ -25,7 +25,6 @@ class SetType(Enum):
     MDPS = 4
     RDPS = 5
 
-
 class Hammer(Enum):
     NOTYPE = 0
     Yes = 1
@@ -185,7 +184,7 @@ def CTABolider(_bot):
     closed = {}
     sets: [Set] = []
     mainChannel = {566961779163267115: 804014484023672933}
-
+    fetchedMessages = {}
     rolesIDs = [573968475551432705, 706268409830309990,
                 566961993471361042, 591402939063730184]
     closeCTAReactionName = "🔴"
@@ -200,15 +199,21 @@ def CTABolider(_bot):
         while not bot._closed:
             for cta in ctas.values():
                 cta: CTA
-                message = await bot.get_guild(cta.guildID).get_channel(cta.channelID).fetch_message(cta.messageID)
-
-                if cta.status == Status.MASSING:
-                    currentTime = datetime.now().time()
-
-                    if currentTime >= cta.ctaTimer:
-                        cta.status = Status.ONGOING
 
                 if cta.status != Status.DONE:
+
+                    if cta.messageID not in fetchedMessages:
+                        print("Fetching message")
+                        message = await bot.get_guild(cta.guildID).get_channel(cta.channelID).fetch_message(cta.messageID)
+                    else:
+                        message = fetchedMessages[cta.messageID]
+
+                    if cta.status == Status.MASSING:
+                        currentTime = datetime.now().time()
+
+                        if currentTime >= cta.ctaTimer:
+                            cta.status = Status.ONGOING
+
                     await message.edit(embed=cta.GetEmbed())
 
             await asyncio.sleep(3)
@@ -252,7 +257,7 @@ def CTABolider(_bot):
             ctaMessage = await ctx.send(embed=cta.GetEmbed())
             cta.messageID = ctaMessage.id
             ctas[ctaMessage.id] = cta
-
+            fetchedMessages[ctaMessage.id]=ctaMessage;
             for set in sets:
                 await ctaMessage.add_reaction(set.emoji)
 
